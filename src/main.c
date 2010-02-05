@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <poll.h>
+#include <sys/select.h>
 #include <time.h>
 #include <ctype.h>
 /* open () */
@@ -68,12 +68,14 @@ int main (int argc, char **argv) {
 	PianoStation_t *curStation = NULL;
 	WardrobeSong_t scrobbleSong;
 	char doQuit = 0;
-	/* polls */
 	/* FIXME: max path length? */
 	char ctlPath[1024];
 	FILE *ctlFd = NULL;
-	struct pollfd polls[2];
-	nfds_t pollsLen = 0;
+	/* wait 1 second to update the time */
+	struct timeval tv = {1, 0};
+	int maxfd;
+	int fds[2];
+	fd_set open_fds, to_read;
 	char buf = '\0';
 	/* terminal attributes _before_ we started messing around with ~ECHO */
 	struct termios termOrig;
@@ -92,18 +94,20 @@ int main (int argc, char **argv) {
 	BarSettingsInit (&settings);
 	BarSettingsRead (&settings);
 
-	/* init polls */
-	polls[0].fd = fileno (stdin);
-	polls[0].events = POLLIN;
-	++pollsLen;
+	/* init fds */
+	FD_ZERO(&open_fds);
+
+	fds[0]= fileno (stdin);
+	FD_SET(fds[0], &open_fds);
+	maxfd = fds[0] + 1;
 
 	BarGetXdgConfigDir (PACKAGE "/ctl", ctlPath, sizeof (ctlPath));
 	/* FIXME: why is r_+_ required? */
 	ctlFd = fopen (ctlPath, "r+");
 	if (ctlFd != NULL) {
-		polls[1].fd = fileno (ctlFd);
-		polls[1].events = POLLIN;
-		++pollsLen;
+		fds[1] = fileno(ctlFd);
+		FD_SET(fds[1], &open_fds);
+		maxfd = fds[1] + 1;
 		BarUiMsg (MSG_INFO, "Control fifo at %s opened\n", ctlPath);
 	}
 
@@ -290,14 +294,17 @@ int main (int argc, char **argv) {
 			} /* end if curStation != NULL */
 		}
 
+		// copy any open file descriptors we want to check into the fd_set
+		// to be checked
+		memcpy(&to_read, &open_fds, sizeof(fd_set));
 		/* in the meantime: wait for user actions;
 		 * 1000ms == 1s => refresh time display every second */
-		if (poll (polls, pollsLen, 1000) > 0) {
+		if (select (maxfd, &to_read, 0, 0, &tv) > 0) {
 			FILE *curFd = NULL;
 
-			if (polls[0].revents & POLLIN) {
+			if (FD_ISSET(fds[0], &to_read)) {
 				curFd = stdin;
-			} else if (polls[1].revents & POLLIN) {
+			} else if (FD_ISSET(fds[1], &to_read)) {
 				curFd = ctlFd;
 			}
 			buf = fgetc (curFd);
