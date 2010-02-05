@@ -299,6 +299,8 @@ int main (int argc, char **argv) {
 		memcpy(&to_read, &open_fds, sizeof(fd_set));
 		/* in the meantime: wait for user actions;
 		 * 1000ms == 1s => refresh time display every second */
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 		if (select (maxfd, &to_read, 0, 0, &tv) > 0) {
 			FILE *curFd = NULL;
 
