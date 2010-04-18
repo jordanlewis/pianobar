@@ -38,11 +38,8 @@ THE SOFTWARE.
 #include <fcntl.h>
 /* tcset/getattr () */
 #include <termios.h>
-
-/* last.fm scrobbling library */
-#include <wardrobe.h>
-
 #include <pthread.h>
+#include <assert.h>
 
 /* pandora.com library */
 #include <piano.h>
@@ -58,24 +55,21 @@ THE SOFTWARE.
 int main (int argc, char **argv) {
 	/* handles */
 	PianoHandle_t ph;
+	WaitressHandle_t waith;
 	static struct audioPlayer player;
 	BarSettings_t settings;
 	pthread_t playerThread;
-	WardrobeHandle_t wh;
 	/* playlist; first item is current song */
 	PianoSong_t *playlist = NULL;
 	PianoSong_t *songHistory = NULL;
 	PianoStation_t *curStation = NULL;
-	WardrobeSong_t scrobbleSong;
 	char doQuit = 0;
 	/* FIXME: max path length? */
 	char ctlPath[1024];
 	FILE *ctlFd = NULL;
-	/* wait 1 second to update the time */
-	struct timeval tv = {1, 0};
-	int maxfd;
-	int fds[2];
-	fd_set open_fds, to_read;
+	struct timeval selectTimeout;
+	int maxFd, selectFds[2];
+	fd_set readSet, readSetCopy;
 	char buf = '\0';
 	/* terminal attributes _before_ we started messing around with ~ECHO */
 	struct termios termOrig;
@@ -90,24 +84,28 @@ int main (int argc, char **argv) {
 	/* init some things */
 	ao_initialize ();
 	PianoInit (&ph);
-	WardrobeInit (&wh);
+
+	WaitressInit (&waith);
+	strncpy (waith.host, PIANO_RPC_HOST, sizeof (waith.host)-1);
+	strncpy (waith.port, PIANO_RPC_PORT, sizeof (waith.port)-1);
+
 	BarSettingsInit (&settings);
 	BarSettingsRead (&settings);
 
 	/* init fds */
-	FD_ZERO(&open_fds);
-
-	fds[0]= fileno (stdin);
-	FD_SET(fds[0], &open_fds);
-	maxfd = fds[0] + 1;
+	FD_ZERO(&readSet);
+	selectFds[0] = fileno (stdin);
+	FD_SET(selectFds[0], &readSet);
+	maxFd = selectFds[0] + 1;
 
 	BarGetXdgConfigDir (PACKAGE "/ctl", ctlPath, sizeof (ctlPath));
 	/* FIXME: why is r_+_ required? */
 	ctlFd = fopen (ctlPath, "r+");
 	if (ctlFd != NULL) {
-		fds[1] = fileno(ctlFd);
-		FD_SET(fds[1], &open_fds);
-		maxfd = fds[1] + 1;
+		selectFds[1] = fileno (ctlFd);
+		FD_SET(selectFds[1], &readSet);
+		/* assuming ctlFd is always > stdin */
+		maxFd = selectFds[1] + 1;
 		BarUiMsg (MSG_INFO, "Control fifo at %s opened\n", ctlPath);
 	}
 
@@ -124,30 +122,39 @@ int main (int argc, char **argv) {
 		settings.password = strdup (passBuf);
 	}
 
-	if (settings.enableScrobbling) {
-		wh.user = strdup (settings.lastfmUser);
-		wh.password = strdup (settings.lastfmPassword);
-	}
-
 	/* setup control connection */
 	if (settings.controlProxy != NULL) {
 		char tmpPath[2];
-		WaitressSplitUrl (settings.controlProxy, ph.waith.proxyHost,
-				sizeof (ph.waith.proxyHost), ph.waith.proxyPort,
-				sizeof (ph.waith.proxyPort), tmpPath, sizeof (tmpPath));
+		WaitressSplitUrl (settings.controlProxy, waith.proxyHost,
+				sizeof (waith.proxyHost), waith.proxyPort,
+				sizeof (waith.proxyPort), tmpPath, sizeof (tmpPath));
 	}
 
-	BarUiMsg (MSG_INFO, "Login... ");
-	if (BarUiPrintPianoStatus (PianoConnect (&ph, settings.username,
-			settings.password)) !=
-			PIANO_RET_OK) {
-		BarTermRestore (&termOrig);
-		return 0;
+	{
+		PianoReturn_t pRet;
+		WaitressReturn_t wRet;
+		PianoRequestDataLogin_t reqData;
+		reqData.user = settings.username;
+		reqData.password = settings.password;
+		
+		BarUiMsg (MSG_INFO, "Login... ");
+		if (!BarUiPianoCall (&ph, PIANO_REQUEST_LOGIN, &waith, &reqData, &pRet,
+				&wRet)) {
+			BarTermRestore (&termOrig);
+			return 0;
+		}
 	}
-	BarUiMsg (MSG_INFO, "Get stations... ");
-	if (BarUiPrintPianoStatus (PianoGetStations (&ph)) != PIANO_RET_OK) {
-		BarTermRestore (&termOrig);
-		return 0;
+
+	{
+		PianoReturn_t pRet;
+		WaitressReturn_t wRet;
+
+		BarUiMsg (MSG_INFO, "Get stations... ");
+		if (!BarUiPianoCall (&ph, PIANO_REQUEST_GET_STATIONS, &waith, NULL,
+				&pRet, &wRet)) {
+			BarTermRestore (&termOrig);
+			return 0;
+		}
 	}
 
 	/* try to get autostart station */
@@ -173,30 +180,14 @@ int main (int argc, char **argv) {
 	while (!doQuit) {
 		/* song finished playing, clean up things/scrobble song */
 		if (player.mode == PLAYER_FINISHED_PLAYBACK) {
-			scrobbleSong.length = player.songDuration / BAR_PLAYER_MS_TO_S_FACTOR;
-			/* scrobble when >= nn% are played; use seconds, not
-			 * milliseconds */
-			if (scrobbleSong.length > 0 && settings.enableScrobbling &&
-					player.songPlayed / BAR_PLAYER_MS_TO_S_FACTOR * 100 /
-					scrobbleSong.length >= settings.lastfmScrobblePercent) {
-				WardrobeReturn_t wRet;
-
-				BarUiMsg (MSG_INFO, "Scrobbling song... ");
-				if ((wRet = WardrobeSubmit (&wh, &scrobbleSong)) ==
-						WARDROBE_RET_OK) {
-					BarUiMsg (MSG_NONE, "Ok.\n");
-				} else {
-					BarUiMsg (MSG_ERR, "Error: %s\n",
-							WardrobeErrorToString (wRet));
-				}
-			}
-			WardrobeSongDestroy (&scrobbleSong);
+			BarUiStartEventCmd (&settings, "songfinish", curStation, playlist,
+					&player, PIANO_RET_OK, WAITRESS_RET_OK);
 			/* FIXME: pthread_join blocks everything if network connection
 			 * is hung up e.g. */
 			void *threadRet;
 			pthread_join (playerThread, &threadRet);
 			/* don't continue playback if thread reports error */
-			if (threadRet != NULL) {
+			if (threadRet != (void *) PLAYER_RET_OK) {
 				curStation = NULL;
 			}
 			memset (&player, 0, sizeof (player));
@@ -240,21 +231,25 @@ int main (int argc, char **argv) {
 					}
 				}
 				if (playlist == NULL) {
-					PianoReturn_t pRet = PIANO_RET_ERR;
+					PianoReturn_t pRet;
+					WaitressReturn_t wRet;
+					PianoRequestDataGetPlaylist_t reqData;
+					reqData.station = curStation;
+					reqData.format = settings.audioFormat;
 
 					BarUiMsg (MSG_INFO, "Receiving new playlist... ");
-					if ((pRet = BarUiPrintPianoStatus (PianoGetPlaylist (&ph,
-							curStation->id, settings.audioFormat,
-							&playlist))) != PIANO_RET_OK) {
+					if (!BarUiPianoCall (&ph, PIANO_REQUEST_GET_PLAYLIST,
+							&waith, &reqData, &pRet, &wRet)) {
 						curStation = NULL;
 					} else {
+						playlist = reqData.retPlaylist;
 						if (playlist == NULL) {
 							BarUiMsg (MSG_INFO, "No tracks left.\n");
 							curStation = NULL;
 						}
 					}
 					BarUiStartEventCmd (&settings, "stationfetchplaylist",
-							curStation, playlist, pRet);
+							curStation, playlist, &player, pRet, wRet);
 				}
 				/* song ready to play */
 				if (playlist != NULL) {
@@ -265,14 +260,6 @@ int main (int argc, char **argv) {
 					if (playlist->audioUrl == NULL) {
 						BarUiMsg (MSG_ERR, "Invalid song url.\n");
 					} else {
-						/* setup artist and song name for scrobbling (playlist
-						 * may be NULL later) */
-						WardrobeSongInit (&scrobbleSong);
-						scrobbleSong.artist = strdup (playlist->artist);
-						scrobbleSong.title = strdup (playlist->title);
-						scrobbleSong.album = strdup (playlist->album);
-						scrobbleSong.started = time (NULL);
-
 						/* setup player */
 						memset (&player, 0, sizeof (player));
 
@@ -284,8 +271,12 @@ int main (int argc, char **argv) {
 			
 						/* throw event */
 						BarUiStartEventCmd (&settings, "songstart", curStation,
-								playlist, PIANO_RET_OK);
+								playlist, &player, PIANO_RET_OK,
+								WAITRESS_RET_OK);
 
+						/* prevent race condition, mode must _not_ be FREED if
+						 * thread has been started */
+						player.mode = PLAYER_STARTING;
 						/* start player */
 						pthread_create (&playerThread, NULL, BarPlayerThread,
 								&player);
@@ -294,19 +285,18 @@ int main (int argc, char **argv) {
 			} /* end if curStation != NULL */
 		}
 
-		// copy any open file descriptors we want to check into the fd_set
-		// to be checked
-		memcpy(&to_read, &open_fds, sizeof(fd_set));
-		/* in the meantime: wait for user actions;
-		 * 1000ms == 1s => refresh time display every second */
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-		if (select (maxfd, &to_read, 0, 0, &tv) > 0) {
+		/* select modifies its arguments => copy the set */
+		memcpy (&readSetCopy, &readSet, sizeof (readSet));
+		selectTimeout.tv_sec = 1;
+		selectTimeout.tv_usec = 0;
+
+		/* in the meantime: wait for user actions */
+		if (select (maxFd, &readSetCopy, NULL, NULL, &selectTimeout) > 0) {
 			FILE *curFd = NULL;
 
-			if (FD_ISSET(fds[0], &to_read)) {
+			if (FD_ISSET(selectFds[0], &readSetCopy)) {
 				curFd = stdin;
-			} else if (FD_ISSET(fds[1], &to_read)) {
+			} else if (FD_ISSET(selectFds[1], &readSetCopy)) {
 				curFd = ctlFd;
 			}
 			buf = fgetc (curFd);
@@ -324,8 +314,8 @@ int main (int argc, char **argv) {
 							BarUiActQuit, BarUiActRenameStation,
 							BarUiActSelectStation, BarUiActTempBanSong,
 							BarUiActPrintUpcoming, BarUiActSelectQuickMix,
-							BarUiActDebug};
-					idToF[i] (&ph, &player, &settings, &playlist,
+							BarUiActDebug, BarUiActBookmark};
+					idToF[i] (&ph, &waith, &player, &settings, &playlist,
 							&curStation, &songHistory, &doQuit, curFd);
 					break;
 				}
@@ -362,7 +352,6 @@ int main (int argc, char **argv) {
 	PianoDestroy (&ph);
 	PianoDestroyPlaylist (songHistory);
 	PianoDestroyPlaylist (playlist);
-	WardrobeDestroy (&wh);
 	ao_shutdown();
 	BarSettingsDestroy (&settings);
 

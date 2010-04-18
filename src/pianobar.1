@@ -18,6 +18,15 @@ or
 .RS
 Per-user configuration file. See
 .B CONFIGURATION.
+.RE
+
+.I /etc/libao.conf
+or
+.I ~/.libao
+.RS
+Global/per-user audio output configuration. See libao documentation at
+http://xiph.org/ao/doc/config.html
+.RE
 
 .SH CONFIGURATION
 The configuration file consists of simple
@@ -44,6 +53,10 @@ pandora.com web interface.
 .B act_stationaddmusic = a
 Add more music to current station. You will be asked for a search string. Just
 follow the instructions. If you're clueless try '?' (without quotes).
+
+.TP
+.B act_bookmark = b
+Bookmark current song or artist.
 
 .TP
 .B act_stationcreate = c
@@ -133,26 +146,12 @@ will use this proxy. The music is streamed directly.
 
 .TP
 .B event_command = path
-File that is executed when event occurs. The file is called with the event type
-as it's first argument. More information is supplied through stdin.
+File that is executed when event occurs. See section
+.B EVENTCMD
 
 .TP
 .B history = 5
 Keep a history of the last n songs (5, by default). You can rate these songs.
-
-.TP
-.B lastfm_user = your_username
-If you want to send your played songs to last.fm set this to your last.fm
-username.
-
-.TP
-.B lastfm_password = plain_password
-A password is needed too if you want to scrobble your played song.
-
-.TP
-.B lastfm_scrobble_percent = 50-100
-When should a track be submitted to last.fm. Percent value. Don't append
-percent sign, do not set larger than 90 to ensure all songs are scrobbled.
 
 .TP
 .B password = plaintext_password
@@ -186,6 +185,24 @@ Another example:
  done
 
  echo -ne 'n\\x1a' | nc -q 0 127.0.0.1 12345
+
+.SH EVENTCMD
+
+.B pianobar
+can report certain "events" to an external application (see
+.B CONFIGURATION
+). This application is started with the event name as it's first argument. More
+information (artist, title, album, stationName, error code, error description,
+song length in milliseconds, rating) is supplied through stdin.
+
+Currently supported events are: artistbookmark, songban, songbookmark,
+songexplain, songfinish, songlove, songmove, songshelf, songstart,
+stationaddmusic, stationaddshared, stationcreate, stationdelete,
+stationfetchplaylist, stationquickmixtoggle, stationrename
+
+An example script can be found in the contrib/ directory of
+.B pianobar's
+source distribution.
 
 .SH AUTHOR
 Lars-Dominik Braun <PromyLOPh@lavabit.com>

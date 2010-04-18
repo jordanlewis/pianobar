@@ -25,10 +25,12 @@ THE SOFTWARE.
 #define _SETTINGS_H
 
 #include <piano.h>
+#include <waitress.h>
 
 #include "player.h"
 
-#define BAR_KS_ARGS PianoHandle_t *ph, struct audioPlayer *player, \
+#define BAR_KS_ARGS PianoHandle_t *ph, WaitressHandle_t *waith, \
+		struct audioPlayer *player, \
 		BarSettings_t *settings, PianoSong_t **curSong, \
 		PianoStation_t **curStation, PianoSong_t **songHistory, char *doQuit, \
 		FILE *curFd
@@ -57,18 +59,15 @@ typedef enum {
 	BAR_KS_UPCOMING = 18,
 	BAR_KS_SELECTQUICKMIX = 19,
 	BAR_KS_DEBUG = 20,
+	BAR_KS_BOOKMARK = 21,
 	/* insert new shortcuts _before_ this element and increase its value */
-	BAR_KS_COUNT = 21,
+	BAR_KS_COUNT = 22,
 } BarKeyShortcutId_t;
 
 typedef struct {
 	char *username;
 	char *password;
 	char *controlProxy; /* non-american listeners need this */
-	char *lastfmUser;
-	char *lastfmPassword;
-	unsigned char lastfmScrobblePercent;
-	char enableScrobbling;
 	char keys[BAR_KS_COUNT];
 	PianoAudioFormat_t audioFormat;
 	char *autostartStation;
