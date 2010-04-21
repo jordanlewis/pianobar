@@ -391,8 +391,10 @@ void BarUiActRenameStation (BAR_KS_ARGS) {
 /*	play another station
  */
 void BarUiActSelectStation (BAR_KS_ARGS) {
-	*curStation = BarUiSelectStation (ph, "Select station: ", curFd);
-	if (*curStation != NULL) {
+	PianoStation_t *newStation = BarUiSelectStation (ph, "Select station: ",
+			curFd);
+	if (newStation != NULL) {
+		*curStation = newStation;
 		BarUiPrintStation ((*curStation));
 		BarUiDoSkipSong (player);
 		PianoDestroyPlaylist (*curSong);
