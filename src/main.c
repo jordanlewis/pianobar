@@ -130,7 +130,6 @@ int main (int argc, char **argv) {
 		settings.password = strdup (passBuf);
 	}
 
-<<<<<<< HEAD:src/main.c
 	if (settings.enableScrobbling) {
 		wh.user = strdup (settings.lastfmUser);
 		wh.password = strdup (settings.lastfmPassword);
