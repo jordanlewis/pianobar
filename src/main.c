@@ -130,13 +130,21 @@ int main (int argc, char **argv) {
 		settings.password = strdup (passBuf);
 	}
 
+<<<<<<< HEAD:src/main.c
 	if (settings.enableScrobbling) {
 		wh.user = strdup (settings.lastfmUser);
 		wh.password = strdup (settings.lastfmPassword);
 	}
 
-	/* setup control connection */
-	if (settings.controlProxy != NULL) {
+	/* set up proxy (control proxy for non-us citizen or global proxy for poor
+	 * firewalled fellows) */
+	if (settings.proxy != NULL && strlen (settings.proxy) > 0) {
+		char tmpPath[2];
+		WaitressSplitUrl (settings.proxy, waith.proxyHost,
+				sizeof (waith.proxyHost), waith.proxyPort,
+				sizeof (waith.proxyPort), tmpPath, sizeof (tmpPath));
+	} else if (settings.controlProxy != NULL) {
+		/* global proxy overrides control proxy */
 		char tmpPath[2];
 		WaitressSplitUrl (settings.controlProxy, waith.proxyHost,
 				sizeof (waith.proxyHost), waith.proxyPort,
@@ -304,6 +312,17 @@ int main (int argc, char **argv) {
 
 						WaitressInit (&player.waith);
 						WaitressSetUrl (&player.waith, playlist->audioUrl);
+
+						/* set up global proxy, player is NULLed on songfinish */
+						if (settings.proxy != NULL) {
+							char tmpPath[2];
+							WaitressSplitUrl (settings.proxy,
+									player.waith.proxyHost,
+									sizeof (player.waith.proxyHost),
+									player.waith.proxyPort,
+									sizeof (player.waith.proxyPort), tmpPath,
+									sizeof (tmpPath));
+						}
 
 						player.gain = playlist->fileGain;
 						player.audioFormat = playlist->audioFormat;

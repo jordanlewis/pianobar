@@ -72,6 +72,7 @@ void BarSettingsInit (BarSettings_t *settings) {
  */
 void BarSettingsDestroy (BarSettings_t *settings) {
 	free (settings->controlProxy);
+	free (settings->proxy);
 	free (settings->username);
 	free (settings->password);
 	free (settings->lastfmUser);
@@ -132,6 +133,8 @@ void BarSettingsRead (BarSettings_t *settings) {
 		}
 		if (strcmp ("control_proxy", key) == 0) {
 			settings->controlProxy = strdup (val);
+		} else if (strcmp ("proxy", key) == 0) {
+			settings->proxy = strdup (val);
 		} else if (strcmp ("user", key) == 0) {
 			settings->username = strdup (val);
 		} else if (strcmp ("password", key) == 0) {
@@ -177,6 +180,13 @@ void BarSettingsRead (BarSettings_t *settings) {
 	/* only scrobble tracks if username and password are set */
 	if (settings->lastfmUser != NULL && settings->lastfmPassword != NULL) {
 		settings->enableScrobbling = 1;
+	}
+	/* check environment variable if proxy is not set explicitly */
+	if (settings->proxy == NULL) {
+		char *tmpProxy = getenv ("http_proxy");
+		if (tmpProxy != NULL && strlen (tmpProxy) > 0) {
+			settings->proxy = strdup (tmpProxy);
+		}
 	}
 
 	fclose (configfd);

@@ -72,6 +72,7 @@ typedef struct {
 	char *lastfmPassword;
 	unsigned char lastfmScrobblePercent;
 	char enableScrobbling;
+	char *proxy;
 	char keys[BAR_KS_COUNT];
 	PianoAudioFormat_t audioFormat;
 	char *autostartStation;
