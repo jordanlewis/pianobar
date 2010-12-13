@@ -63,10 +63,7 @@ int main (int argc, char **argv) {
 	WardrobeHandle_t wh;
 	/* playlist; first item is current song */
 	PianoSong_t *playlist = NULL;
-	PianoSong_t *songHistory = NULL;
-	PianoStation_t *curStation = NULL;
 	WardrobeSong_t scrobbleSong;
-	char doQuit = 0;
 	/* FIXME: max path length? */
 	char ctlPath[1024];
 	FILE *ctlFd = NULL;
@@ -130,9 +127,9 @@ int main (int argc, char **argv) {
 		app.settings.password = strdup (passBuf);
 	}
 
-	if (settings.enableScrobbling) {
-		wh.user = strdup (settings.lastfmUser);
-		wh.password = strdup (settings.lastfmPassword);
+	if (app.settings.enableScrobbling) {
+		wh.user = strdup (app.settings.lastfmUser);
+		wh.password = strdup (app.settings.lastfmPassword);
 	}
 
 	/* set up proxy (control proxy for non-us citizen or global proxy for poor
@@ -201,15 +198,15 @@ int main (int argc, char **argv) {
 
 	while (!app.doQuit) {
 		/* song finished playing, clean up things/scrobble song */
-		if (player.mode == PLAYER_FINISHED_PLAYBACK) {
+		if (app.player.mode == PLAYER_FINISHED_PLAYBACK) {
 			BarUiStartEventCmd (&app.settings, "songfinish", app.curStation,
 					app.playlist, &app.player, PIANO_RET_OK, WAITRESS_RET_OK);
-			scrobbleSong.length = player.songDuration / BAR_PLAYER_MS_TO_S_FACTOR;
+			scrobbleSong.length = app.player.songDuration / BAR_PLAYER_MS_TO_S_FACTOR;
 			/* scrobble when >= nn% are played; use seconds, not
 			 * milliseconds */
-			if (scrobbleSong.length > 0 && settings.enableScrobbling &&
-					player.songPlayed / BAR_PLAYER_MS_TO_S_FACTOR * 100 /
-					scrobbleSong.length >= settings.lastfmScrobblePercent) {
+			if (scrobbleSong.length > 0 && app.settings.enableScrobbling &&
+					app.player.songPlayed / BAR_PLAYER_MS_TO_S_FACTOR * 100 /
+					scrobbleSong.length >= app.settings.lastfmScrobblePercent) {
 				WardrobeReturn_t wRet;
 
 				BarUiMsg (MSG_INFO, "Scrobbling song... ");
