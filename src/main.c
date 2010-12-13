@@ -61,8 +61,6 @@ int main (int argc, char **argv) {
 	static BarApp_t app;
 	pthread_t playerThread;
 	WardrobeHandle_t wh;
-	/* playlist; first item is current song */
-	PianoSong_t *playlist = NULL;
 	WardrobeSong_t scrobbleSong;
 	/* FIXME: max path length? */
 	char ctlPath[1024];
@@ -302,9 +300,9 @@ int main (int argc, char **argv) {
 						/* setup artist and song name for scrobbling (playlist
 						 * may be NULL later) */
 						WardrobeSongInit (&scrobbleSong);
-						scrobbleSong.artist = strdup (playlist->artist);
-						scrobbleSong.title = strdup (playlist->title);
-						scrobbleSong.album = strdup (playlist->album);
+						scrobbleSong.artist = strdup (app.playlist->artist);
+						scrobbleSong.title = strdup (app.playlist->title);
+						scrobbleSong.album = strdup (app.playlist->album);
 						scrobbleSong.started = time (NULL);
 
 						/* setup player */
