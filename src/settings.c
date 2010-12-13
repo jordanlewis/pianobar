@@ -32,6 +32,8 @@ THE SOFTWARE.
 #include "settings.h"
 #include "config.h"
 
+#define streq(a, b) (strcmp (a, b) == 0)
+
 /*	tries to guess your config dir; somehow conforming to
  *	http://standards.freedesktop.org/basedir-spec/basedir-spec-0.6.html
  *	@param name of the config file (can contain subdirs too)
@@ -79,6 +81,8 @@ void BarSettingsDestroy (BarSettings_t *settings) {
 	free (settings->lastfmPassword);
 	free (settings->autostartStation);
 	free (settings->eventCmd);
+	free (settings->loveIcon);
+	free (settings->banIcon);
 	memset (settings, 0, sizeof (*settings));
 }
 
@@ -89,14 +93,13 @@ void BarSettingsDestroy (BarSettings_t *settings) {
 void BarSettingsRead (BarSettings_t *settings) {
 	/* FIXME: what is the max length of a path? */
 	char configfile[1024], key[256], val[256];
-	size_t i;
 	FILE *configfd;
 	/* _must_ have same order as in BarKeyShortcutId_t */
-	const char defaultKeys[] = {'?', '+', '-', 'a', 'c', 'd', 'e', 'g',
+	static const char defaultKeys[] = {'?', '+', '-', 'a', 'c', 'd', 'e', 'g',
 			'h', 'i', 'j', 'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'x', '$',
 			'b',
 			};
-	const char *shortcutFileKeys[] = {
+	static const char *shortcutFileKeys[] = {
 			"act_help", "act_songlove", "act_songban", "act_stationaddmusic",
 			"act_stationcreate", "act_stationdelete", "act_songexplain",
 			"act_stationaddbygenre", "act_history", "act_songinfo",
@@ -115,7 +118,10 @@ void BarSettingsRead (BarSettings_t *settings) {
 		#endif
 	#endif
 	settings->history = 5;
+	settings->sortOrder = BAR_SORT_NAME_AZ;
 	memcpy (settings->keys, defaultKeys, sizeof (defaultKeys));
+	settings->loveIcon = strdup ("<3");
+	settings->banIcon = strdup ("</3");
 
 	BarGetXdgConfigDir (PACKAGE "/config", configfile, sizeof (configfile));
 	if ((configfd = fopen (configfile, "r")) == NULL) {
@@ -131,13 +137,13 @@ void BarSettingsRead (BarSettings_t *settings) {
 			/* invalid config line */
 			continue;
 		}
-		if (strcmp ("control_proxy", key) == 0) {
+		if (streq ("control_proxy", key)) {
 			settings->controlProxy = strdup (val);
-		} else if (strcmp ("proxy", key) == 0) {
+		} else if (streq ("proxy", key)) {
 			settings->proxy = strdup (val);
-		} else if (strcmp ("user", key) == 0) {
+		} else if (streq ("user", key)) {
 			settings->username = strdup (val);
-		} else if (strcmp ("password", key) == 0) {
+		} else if (streq ("password", key)) {
 			settings->password = strdup (val);
 		} else if (strcmp ("lastfm_user", key) == 0) {
 			settings->lastfmUser = strdup (val);
@@ -146,27 +152,49 @@ void BarSettingsRead (BarSettings_t *settings) {
 		} else if (strcmp ("lastfm_scrobble_percent", key) == 0) {
 			settings->lastfmScrobblePercent = atoi (val);
 		} else if (memcmp ("act_", key, 4) == 0) {
+			size_t i;
 			/* keyboard shortcuts */
 			for (i = 0; i < BAR_KS_COUNT; i++) {
-				if (strcmp (shortcutFileKeys[i], key) == 0) {
+				if (streq (shortcutFileKeys[i], key)) {
 					settings->keys[i] = val[0];
 					break;
 				}
 			}
-		} else if (strcmp ("audio_format", key) == 0) {
-			if (strcmp (val, "aacplus") == 0) {
+		} else if (streq ("audio_format", key)) {
+			if (streq (val, "aacplus")) {
 				settings->audioFormat = PIANO_AF_AACPLUS;
-			} else if (strcmp (val, "mp3") == 0) {
+			} else if (streq (val, "mp3")) {
 				settings->audioFormat = PIANO_AF_MP3;
-			} else if (strcmp (val, "mp3-hifi") == 0) {
+			} else if (streq (val, "mp3-hifi")) {
 				settings->audioFormat = PIANO_AF_MP3_HI;
 			}
-		} else if (strcmp ("autostart_station", key) == 0) {
+		} else if (streq ("autostart_station", key)) {
 			settings->autostartStation = strdup (val);
-		} else if (strcmp ("event_command", key) == 0) {
+		} else if (streq ("event_command", key)) {
 			settings->eventCmd = strdup (val);
-		} else if (strcmp ("history", key) == 0) {
+		} else if (streq ("history", key)) {
 			settings->history = atoi (val);
+		} else if (streq ("sort", key)) {
+			size_t i;
+			static const char *mapping[] = {"name_az",
+					"name_za",
+					"quickmix_01_name_az",
+					"quickmix_01_name_za",
+					"quickmix_10_name_az",
+					"quickmix_10_name_za",
+					};
+			for (i = 0; i < BAR_SORT_COUNT; i++) {
+				if (streq (mapping[i], val)) {
+					settings->sortOrder = i;
+					break;
+				}
+			}
+		} else if (streq ("love_icon", key)) {
+			free (settings->loveIcon);
+			settings->loveIcon = strdup (val);
+		} else if (streq ("ban_icon", key)) {
+			free (settings->banIcon);
+			settings->banIcon = strdup (val);
 		}
 	}
 

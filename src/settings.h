@@ -27,14 +27,6 @@ THE SOFTWARE.
 #include <piano.h>
 #include <waitress.h>
 
-#include "player.h"
-
-#define BAR_KS_ARGS PianoHandle_t *ph, WaitressHandle_t *waith, \
-		struct audioPlayer *player, \
-		BarSettings_t *settings, PianoSong_t **curSong, \
-		PianoStation_t **curStation, PianoSong_t **songHistory, char *doQuit, \
-		FILE *curFd
-
 /* keep in mind that you have to update several arrays in main.c/ui_act.c too,
  * if you're adding new shortcuts */
 typedef enum {
@@ -64,7 +56,20 @@ typedef enum {
 	BAR_KS_COUNT = 22,
 } BarKeyShortcutId_t;
 
+typedef enum {
+	BAR_SORT_NAME_AZ = 0,
+	BAR_SORT_NAME_ZA = 1,
+	BAR_SORT_QUICKMIX_01_NAME_AZ = 2,
+	BAR_SORT_QUICKMIX_01_NAME_ZA = 3,
+	BAR_SORT_QUICKMIX_10_NAME_AZ = 4,
+	BAR_SORT_QUICKMIX_10_NAME_ZA = 5,
+	BAR_SORT_COUNT = 6,
+} BarStationSorting_t;
+
 typedef struct {
+	unsigned int history;
+	BarStationSorting_t sortOrder;
+	PianoAudioFormat_t audioFormat;
 	char *username;
 	char *password;
 	char *controlProxy; /* non-american listeners need this */
@@ -74,13 +79,11 @@ typedef struct {
 	char enableScrobbling;
 	char *proxy;
 	char keys[BAR_KS_COUNT];
-	PianoAudioFormat_t audioFormat;
 	char *autostartStation;
 	char *eventCmd;
-	unsigned int history;
+	char *loveIcon;
+	char *banIcon;
 } BarSettings_t;
-
-typedef void (*BarKeyShortcutFunc_t) (BAR_KS_ARGS);
 
 void BarSettingsInit (BarSettings_t *);
 void BarSettingsDestroy (BarSettings_t *);

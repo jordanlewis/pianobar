@@ -140,6 +140,10 @@ or the key you defined in
 .B act_songinfo.
 
 .TP
+.B ban_icon = </3
+Icon for banned songs.
+
+.TP
 .B control_proxy = http://host:port/
 Non-american users need a proxy to use pandora.com. Only the xmlrpc interface
 will use this proxy. The music is streamed directly.
@@ -168,6 +172,10 @@ When should a track be submitted to last.fm. Percent value. Don't append
 percent sign, do not set larger than 90 to ensure all songs are scrobbled.
 
 .TP
+.B love_icon = <3
+Icon for loved songs.
+
+.TP
 .B password = plaintext_password
 Your pandora.com password. Plain-text.
 
@@ -175,6 +183,12 @@ Your pandora.com password. Plain-text.
 .B proxy = http://host:port/
 Use a http proxy. Note that this setting overrides the http_proxy environment
 variable.
+
+.TP
+.B sort = {name_az, name_za, quickmix_01_name_az, quickmix_01_name_za, quickmix_10_name_az, quickmix_10_name_za}
+Sort station list by name or type (is quickmix) and name. name_az for example
+sorts by name from a to z, quickmix_01_name_za by type (quickmix at the
+bottom) and name from z to a.
 
 .TP
 .B user = your@user.name
@@ -212,7 +226,7 @@ can report certain "events" to an external application (see
 .B CONFIGURATION
 ). This application is started with the event name as it's first argument. More
 information (artist, title, album, stationName, error code, error description,
-song length in milliseconds, rating) is supplied through stdin.
+song length in milliseconds, rating, album art url) is supplied through stdin.
 
 Currently supported events are: artistbookmark, songban, songbookmark,
 songexplain, songfinish, songlove, songmove, songshelf, songstart,

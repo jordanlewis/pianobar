@@ -24,29 +24,31 @@ THE SOFTWARE.
 #ifndef _UI_ACT_H
 #define _UI_ACT_H
 
-#include "settings.h"
+#include "main.h"
 
-void BarUiActHelp (BAR_KS_ARGS);
-void BarUiActAddMusic (BAR_KS_ARGS);
-void BarUiActBanSong (BAR_KS_ARGS);
-void BarUiActCreateStation (BAR_KS_ARGS);
-void BarUiActAddSharedStation (BAR_KS_ARGS);
-void BarUiActDeleteStation (BAR_KS_ARGS);
-void BarUiActExplain (BAR_KS_ARGS);
-void BarUiActStationFromGenre (BAR_KS_ARGS);
-void BarUiActSongInfo (BAR_KS_ARGS);
-void BarUiActLoveSong (BAR_KS_ARGS);
-void BarUiActSkipSong (BAR_KS_ARGS);
-void BarUiActMoveSong (BAR_KS_ARGS);
-void BarUiActPause (BAR_KS_ARGS);
-void BarUiActRenameStation (BAR_KS_ARGS);
-void BarUiActSelectStation (BAR_KS_ARGS);
-void BarUiActTempBanSong (BAR_KS_ARGS);
-void BarUiActPrintUpcoming (BAR_KS_ARGS);
-void BarUiActSelectQuickMix (BAR_KS_ARGS);
-void BarUiActQuit (BAR_KS_ARGS);
-void BarUiActDebug (BAR_KS_ARGS);
-void BarUiActHistory (BAR_KS_ARGS);
-void BarUiActBookmark (BAR_KS_ARGS);
+#define BarUiActCallback(name) void name (BarApp_t *app, FILE *curFd)
+
+BarUiActCallback(BarUiActHelp);
+BarUiActCallback(BarUiActAddMusic);
+BarUiActCallback(BarUiActBanSong);
+BarUiActCallback(BarUiActCreateStation);
+BarUiActCallback(BarUiActAddSharedStation);
+BarUiActCallback(BarUiActDeleteStation);
+BarUiActCallback(BarUiActExplain);
+BarUiActCallback(BarUiActStationFromGenre);
+BarUiActCallback(BarUiActSongInfo);
+BarUiActCallback(BarUiActLoveSong);
+BarUiActCallback(BarUiActSkipSong);
+BarUiActCallback(BarUiActMoveSong);
+BarUiActCallback(BarUiActPause);
+BarUiActCallback(BarUiActRenameStation);
+BarUiActCallback(BarUiActSelectStation);
+BarUiActCallback(BarUiActTempBanSong);
+BarUiActCallback(BarUiActPrintUpcoming);
+BarUiActCallback(BarUiActSelectQuickMix);
+BarUiActCallback(BarUiActQuit);
+BarUiActCallback(BarUiActDebug);
+BarUiActCallback(BarUiActHistory);
+BarUiActCallback(BarUiActBookmark);
 
 #endif /* _UI_ACT_H */

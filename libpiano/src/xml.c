@@ -257,22 +257,18 @@ static void PianoXmlParsePlaylistCb (const char *key, const ezxml_t value,
 				memcpy (&song->audioUrl[valueStrN - urlTailN], urlTail,
 						urlTailN/2 - 8);
 			}
-			PianoFree (urlTail, urlTailN/2);
+			free (urlTail);
 		}
+	} else if (strcmp ("artRadio", key) == 0) {
+		song->coverArt = strdup (valueStr);
 	} else if (strcmp ("artistSummary", key) == 0) {
 		song->artist = strdup (valueStr);
 	} else if (strcmp ("musicId", key) == 0) {
 		song->musicId = strdup (valueStr);
-	} else if (strcmp ("matchingSeed", key) == 0) {
-		song->matchingSeed = strdup (valueStr);
 	} else if (strcmp ("userSeed", key) == 0) {
 		song->userSeed = strdup (valueStr);
-	} else if (strcmp ("focusTraitId", key) == 0) {
-		song->focusTraitId = strdup (valueStr);
 	} else if (strcmp ("songTitle", key) == 0) {
 		song->title = strdup (valueStr);
-	} else if (strcmp ("identity", key) == 0) {
-		song->identity = strdup (valueStr);
 	} else if (strcmp ("rating", key) == 0) {
 		if (strcmp (valueStr, "1") == 0) {
 			song->rating = PIANO_RATE_LOVE;
@@ -295,7 +291,11 @@ static void PianoXmlParsePlaylistCb (const char *key, const ezxml_t value,
 		}
 	} else if (strcmp ("artistMusicId", key) == 0) {
 		song->artistMusicId = strdup (valueStr);
- 	}
+ 	} else if (strcmp ("testStrategy", key) == 0) {
+		song->testStrategy = atoi (valueStr);
+	} else if (strcmp ("songType", key) == 0) {
+		song->songType = atoi (valueStr);
+	}
 }
 
 /*	parses userinfos sent by pandora as login response
@@ -745,27 +745,27 @@ PianoReturn_t PianoXmlParseGenreExplorer (PianoHandle_t *ph, char *xml) {
 		/* get genre subnodes */
 		for (genreNode = ezxml_child (catNode, "genre"); genreNode;
 				genreNode = genreNode->next) {
-			PianoStation_t *tmpStation;
+			PianoGenre_t *tmpGenre;
 
-			if ((tmpStation = calloc (1, sizeof (*tmpStation))) == NULL) {
+			if ((tmpGenre = calloc (1, sizeof (*tmpGenre))) == NULL) {
 				ezxml_free (xmlDoc);
 				return PIANO_RET_OUT_OF_MEMORY;
 			}
 
 			/* get genre attributes */
-			tmpStation->name = strdup (ezxml_attr (genreNode, "name"));
-			tmpStation->id = strdup (ezxml_attr (genreNode, "stationId"));
+			tmpGenre->name = strdup (ezxml_attr (genreNode, "name"));
+			tmpGenre->musicId = strdup (ezxml_attr (genreNode, "musicId"));
 
 			/* append station */
-			if (tmpGenreCategory->stations == NULL) {
-				tmpGenreCategory->stations = tmpStation;
+			if (tmpGenreCategory->genres == NULL) {
+				tmpGenreCategory->genres = tmpGenre;
 			} else {
-				PianoStation_t *curStation =
-						tmpGenreCategory->stations;
-				while (curStation->next != NULL) {
-					curStation = curStation->next;
+				PianoGenre_t *curGenre =
+						tmpGenreCategory->genres;
+				while (curGenre->next != NULL) {
+					curGenre = curGenre->next;
 				}
-				curStation->next = tmpStation;
+				curGenre->next = tmpGenre;
 			}
 		}
 		/* append category */

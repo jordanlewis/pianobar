@@ -64,18 +64,18 @@ typedef enum {
 typedef struct PianoSong {
 	char *artist;
 	char *artistMusicId;
-	char *matchingSeed;
-	float fileGain;
-	PianoSongRating_t rating;
 	char *stationId;
 	char *album;
 	char *userSeed;
 	char *audioUrl;
+	char *coverArt;
 	char *musicId;
 	char *title;
-	char *focusTraitId;
-	char *identity;
+	float fileGain;
+	PianoSongRating_t rating;
 	PianoAudioFormat_t audioFormat;
+	int testStrategy;
+	unsigned int songType;
 	struct PianoSong *next;
 } PianoSong_t;
 
@@ -87,9 +87,15 @@ typedef struct PianoArtist {
 	struct PianoArtist *next;
 } PianoArtist_t;
 
+typedef struct PianoGenre {
+	char *name;
+	char *musicId;
+	struct PianoGenre *next;
+} PianoGenre_t;
+
 typedef struct PianoGenreCategory {
 	char *name;
-	PianoStation_t *stations;
+	PianoGenre_t *genres;
 	struct PianoGenreCategory *next;
 } PianoGenreCategory_t;
 
@@ -99,6 +105,7 @@ typedef struct PianoHandle {
 	/* linked lists */
 	PianoStation_t *stations;
 	PianoGenreCategory_t *genreStations;
+	int timeOffset;
 } PianoHandle_t;
 
 typedef struct PianoSearchResult {
@@ -141,6 +148,7 @@ typedef struct PianoRequest {
 typedef struct {
 	char *user;
 	char *password;
+	unsigned char step;
 } PianoRequestDataLogin_t;
 
 typedef struct {
@@ -157,10 +165,10 @@ typedef struct {
 typedef struct {
 	char *stationId;
 	char *musicId;
-	char *matchingSeed;
 	char *userSeed;
-	char *focusTraitId;
 	PianoSongRating_t rating;
+	unsigned int testStrategy;
+	unsigned int songType;
 } PianoRequestDataAddFeedback_t;
 
 typedef struct {
